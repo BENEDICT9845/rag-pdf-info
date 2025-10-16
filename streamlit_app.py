@@ -85,7 +85,13 @@ def _inngest_api_base() -> str:
 
 def fetch_runs(event_id: str) -> list[dict]:
     url = f"{_inngest_api_base()}/events/{event_id}/runs"
-    resp = requests.get(url)
+    # Get the signing key to authenticate with the Inngest Cloud API
+    signing_key = os.getenv("INNGEST_SIGNING_KEY")
+    headers = {}
+    if signing_key:
+        headers["Authorization"] = f"Bearer {signing_key}"
+
+    resp = requests.get(url, headers=headers)
     resp.raise_for_status()
     data = resp.json()
     return data.get("data", [])
