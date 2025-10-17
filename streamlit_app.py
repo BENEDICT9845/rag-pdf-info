@@ -1,6 +1,7 @@
 import asyncio
 from pathlib import Path
 import time
+import base64
 
 import streamlit as st
 import inngest
@@ -40,23 +41,37 @@ def get_inngest_client() -> inngest.Inngest:
     )
 
 
-def save_uploaded_pdf(file) -> Path:
-    uploads_dir = Path("uploads")
-    uploads_dir.mkdir(parents=True, exist_ok=True)
-    file_path = uploads_dir / file.name
-    file_bytes = file.getbuffer()
-    file_path.write_bytes(file_bytes)
-    return file_path
+# def save_uploaded_pdf(file) -> Path:
+#     uploads_dir = Path("uploads")
+#     uploads_dir.mkdir(parents=True, exist_ok=True)
+#     file_path = uploads_dir / file.name
+#     file_bytes = file.getbuffer()
+#     file_path.write_bytes(file_bytes)
+#     return file_path
 
 
-async def send_rag_ingest_event(pdf_path: Path) -> None:
+# async def send_rag_ingest_event(pdf_path: Path) -> None:
+#     client = get_inngest_client()
+#     await client.send(
+#         inngest.Event(
+#             name="rag/ingest_pdf",
+#             data={
+#                 "pdf_path": str(pdf_path.resolve()),
+#                 "source_id": pdf_path.name,
+#             },
+#         )
+#     )
+
+
+async def send_rag_ingest_event(file_name: str, file_bytes: bytes) -> None:
     client = get_inngest_client()
+    pdf_b64 = base64.b64encode(file_bytes).decode("utf-8")
     await client.send(
         inngest.Event(
             name="rag/ingest_pdf",
             data={
-                "pdf_path": str(pdf_path.resolve()),
-                "source_id": pdf_path.name,
+                "pdf_b64": pdf_b64,
+                "source_id": file_name,
             },
         )
     )
@@ -65,14 +80,24 @@ async def send_rag_ingest_event(pdf_path: Path) -> None:
 st.title("Upload a PDF to Ingest")
 uploaded = st.file_uploader("Choose a PDF", type=["pdf"], accept_multiple_files=False)
 
+# if uploaded is not None:
+#     with st.spinner("Uploading and triggering ingestion..."):
+#         path = save_uploaded_pdf(uploaded)
+#         # Kick off the event and block until the send completes
+#         run_async(send_rag_ingest_event(path))
+#         # Small pause for user feedback continuity
+#         time.sleep(0.3)
+#     st.success(f"Triggered ingestion for: {path.name}")
+#     st.caption("You can upload another PDF if you like.")
+
 if uploaded is not None:
     with st.spinner("Uploading and triggering ingestion..."):
-        path = save_uploaded_pdf(uploaded)
+        file_bytes = uploaded.getvalue()
         # Kick off the event and block until the send completes
-        run_async(send_rag_ingest_event(path))
+        run_async(send_rag_ingest_event(uploaded.name, file_bytes))
         # Small pause for user feedback continuity
         time.sleep(0.3)
-    st.success(f"Triggered ingestion for: {path.name}")
+    st.success(f"Triggered ingestion for: {uploaded.name}")
     st.caption("You can upload another PDF if you like.")
 
 st.divider()

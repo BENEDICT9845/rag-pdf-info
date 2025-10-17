@@ -1,4 +1,5 @@
 import logging
+import base64
 from fastapi import FastAPI
 import inngest
 import inngest.fast_api
@@ -32,9 +33,14 @@ inngest_client = inngest.Inngest(
 )
 async def rag_ingest_pdf(ctx: inngest.Context):
     def _load(ctx: inngest.Context) -> RAGChunkAndSrc:
-        pdf_path = ctx.event.data["pdf_path"]
-        source_id = ctx.event.data.get("source_id", pdf_path)
-        chunks = load_and_chunk_pdf(pdf_path)
+        # pdf_path = ctx.event.data["pdf_path"]
+        # source_id = ctx.event.data.get("source_id", pdf_path)
+        # chunks = load_and_chunk_pdf(pdf_path)
+
+        pdf_b64 = ctx.event.data["pdf_b64"]
+        source_id = ctx.event.data["source_id"]
+        pdf_bytes = base64.b64decode(pdf_b64)
+        chunks = load_and_chunk_pdf(pdf_bytes)
         return RAGChunkAndSrc(chunks=chunks, source_id=source_id)
 
     def _upsert(chunks_and_src: RAGChunkAndSrc) -> RAGUpsertResult:
